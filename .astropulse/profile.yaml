@@ -1,0 +1,19 @@
+---
+# Application Profile for latency-app
+# This connects the application to a specific AstroPulse cluster
+name: latency-app-profile
+clusterName: paas-platform-prod  # CUSTOMIZE: Change to your cluster name
+
+# What is an Application Profile?
+# - Links your application to a specific Kubernetes cluster
+# - Created once per application per cluster
+# - Required before deploying applications
+# - Can be shared across multiple apps on the same cluster
+
+# Usage:
+# 1. Update clusterName to match your cluster (from setup-platform.sh)
+# 2. Apply the profile:
+#    astroctl app profile apply -f .astropulse/profile.yaml
+# 3. Deploy your application:
+#    astroctl app apply -f .astropulse/build-app.yaml
+#    astroctl app apply -f .astropulse/deploy-app.yaml

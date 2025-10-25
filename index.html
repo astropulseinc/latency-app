@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latency App - Real-Time Network Measurement</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #1a1a1a;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        header h1 {
+            font-size: 2.75em;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        header .subtitle {
+            font-size: 1.1em;
+            color: #6c757d;
+            font-weight: 400;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid #e9ecef;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 28px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #495057;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .stat-card.highlight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+
+        .stat-card.highlight .stat-label {
+            opacity: 0.95;
+        }
+
+        .stat-label {
+            font-size: 0.875em;
+            color: #6c757d;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card.highlight .stat-label {
+            color: white;
+        }
+
+        .stat-value {
+            font-size: 2.75em;
+            font-weight: 700;
+            color: #1a1a1a;
+            letter-spacing: -1px;
+        }
+
+        .stat-card.highlight .stat-value {
+            color: white;
+        }
+
+        .stat-unit {
+            font-size: 0.5em;
+            opacity: 0.7;
+            font-weight: 400;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 32px;
+        }
+
+        button {
+            padding: 14px 28px;
+            font-size: 15px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            font-family: inherit;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #000;
+        }
+
+        .btn-success {
+            background: white;
+            color: #1a1a1a;
+            border-color: #dee2e6;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            border-color: #1a1a1a;
+            background: #f8f9fa;
+        }
+
+        .btn-danger {
+            background: white;
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #6c757d;
+            border-color: #dee2e6;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #f8f9fa;
+            border-color: #adb5bd;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .section-title {
+            font-size: 1.25em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+
+        .history-container {
+            height: 320px;
+            position: relative;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 24px;
+            background: #fafbfc;
+            overflow: hidden;
+        }
+
+        .history-chart {
+            display: flex;
+            align-items: flex-end;
+            height: 100%;
+            gap: 4px;
+        }
+
+        .bar {
+            flex: 1;
+            background: #1a1a1a;
+            border-radius: 3px 3px 0 0;
+            position: relative;
+            transition: all 0.2s ease;
+            min-height: 3px;
+        }
+
+        .bar.good {
+            background: #28a745;
+        }
+
+        .bar.average {
+            background: #667eea;
+        }
+
+        .bar.poor {
+            background: #dc3545;
+        }
+
+        .bar:hover {
+            opacity: 0.7;
+        }
+
+        .bar-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .bar:hover .bar-tooltip {
+            opacity: 1;
+        }
+
+        .status {
+            text-align: center;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 32px;
+            font-weight: 500;
+            font-size: 0.95em;
+        }
+
+        .status.measuring {
+            background: #e7f3ff;
+            color: #0066cc;
+            border: 1px solid #b3d9ff;
+        }
+
+        .status.idle {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #e9ecef;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .info-section {
+            margin-top: 32px;
+            padding: 24px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #1a1a1a;
+        }
+
+        .info-section h3 {
+            margin-bottom: 12px;
+            color: #1a1a1a;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .info-section p {
+            line-height: 1.7;
+            color: #495057;
+            font-size: 0.95em;
+        }
+
+        .footer {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 48px;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: #495057;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .footer a:hover {
+            color: #1a1a1a;
+            text-decoration: underline;
+        }
+
+        .empty-state {
+            text-align: center;
+            width: 100%;
+            color: #adb5bd;
+            padding-top: 120px;
+            font-size: 0.95em;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 24px 16px;
+            }
+
+            header h1 {
+                font-size: 2em;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .history-container {
+                height: 240px;
+            }
+        }
+
+        /* Smooth transitions */
+        .stat-value, .bar {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Latency App</h1>
+            <p class="subtitle">Real-Time Network Performance Measurement</p>
+        </header>
+
+        <div class="card">
+            <div class="stats-grid">
+                <div class="stat-card highlight">
+                    <div class="stat-label">Current Latency</div>
+                    <div class="stat-value" id="currentLatency">--<span class="stat-unit">ms</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Average</div>
+                    <div class="stat-value" id="avgLatency">--<span class="stat-unit">ms</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Min / Max</div>
+                    <div class="stat-value" style="font-size: 1.75em;"><span id="minLatency">--</span> / <span id="maxLatency">--</span><span class="stat-unit">ms</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Tests Run</div>
+                    <div class="stat-value" id="measureCount">0</div>
+                </div>
+            </div>
+
+            <div class="status idle" id="status">
+                Ready to measure latency
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" id="measureOnce">Measure Once</button>
+                <button class="btn-success" id="startContinuous">Start Continuous</button>
+                <button class="btn-danger" id="stopContinuous" disabled>Stop</button>
+                <button class="btn-secondary" id="reset">Reset</button>
+            </div>
+
+            <div class="section-title">Latency History (Last 50 measurements)</div>
+            <div class="history-container">
+                <div class="history-chart" id="historyChart">
+                    <div class="empty-state">
+                        No measurements yet. Click "Measure Once" to start.
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>What is Latency?</h3>
+                <p>
+                    Network latency measures the time it takes for data to travel from your browser to the server and back (round-trip time).
+                    Lower latency indicates faster response times and better network performance.
+                </p>
+                <p style="margin-top: 12px;">
+                    <strong>Performance Benchmarks:</strong> &nbsp;
+                    Excellent: &lt; 50ms &nbsp;|&nbsp;
+                    Good: 50-100ms &nbsp;|&nbsp;
+                    Average: 100-150ms &nbsp;|&nbsp;
+                    Poor: &gt; 150ms
+                </p>
+            </div>
+        </div>
+
+        <div class="footer">
+            Powered by <a href="https://astropulse.io" target="_blank">AstroPulse</a> &nbsp;|&nbsp;
+            <a href="https://github.com/astropulseinc/latency-app" target="_blank">View on GitHub</a>
+        </div>
+    </div>
+
+    <script>
+        let measurements = [];
+        let continuousInterval = null;
+        let isRunning = false;
+
+        const elements = {
+            currentLatency: document.getElementById('currentLatency'),
+            avgLatency: document.getElementById('avgLatency'),
+            minLatency: document.getElementById('minLatency'),
+            maxLatency: document.getElementById('maxLatency'),
+            measureCount: document.getElementById('measureCount'),
+            status: document.getElementById('status'),
+            historyChart: document.getElementById('historyChart'),
+            measureOnce: document.getElementById('measureOnce'),
+            startContinuous: document.getElementById('startContinuous'),
+            stopContinuous: document.getElementById('stopContinuous'),
+            reset: document.getElementById('reset')
+        };
+
+        function updateStatus(message, type = 'idle') {
+            elements.status.textContent = message;
+            elements.status.className = `status ${type}`;
+        }
+
+        function measureLatency() {
+            const startTime = performance.now();
+
+            updateStatus('Measuring latency...', 'measuring');
+
+            fetch('/ping-latency')
+                .then(response => response.json())
+                .then(data => {
+                    const endTime = performance.now();
+                    const latency = Math.round(endTime - startTime);
+
+                    measurements.push(latency);
+                    if (measurements.length > 50) {
+                        measurements.shift();
+                    }
+
+                    updateStats();
+                    updateChart();
+                    updateStatus(`Last measurement: ${latency}ms`, 'success');
+                })
+                .catch(error => {
+                    console.error('Error measuring latency:', error);
+                    updateStatus('Error: Could not measure latency', 'idle');
+                });
+        }
+
+        function updateStats() {
+            if (measurements.length === 0) return;
+
+            const current = measurements[measurements.length - 1];
+            const avg = Math.round(measurements.reduce((a, b) => a + b, 0) / measurements.length);
+            const min = Math.min(...measurements);
+            const max = Math.max(...measurements);
+
+            elements.currentLatency.innerHTML = `${current}<span class="stat-unit">ms</span>`;
+            elements.avgLatency.innerHTML = `${avg}<span class="stat-unit">ms</span>`;
+            elements.minLatency.textContent = min;
+            elements.maxLatency.textContent = max;
+            elements.measureCount.textContent = measurements.length;
+        }
+
+        function updateChart() {
+            if (measurements.length === 0) return;
+
+            const maxValue = Math.max(...measurements);
+            const minValue = Math.min(...measurements);
+            const range = maxValue - minValue || 1;
+
+            elements.historyChart.innerHTML = measurements.map((value, index) => {
+                const heightPercent = ((value - minValue) / range) * 85 + 15;
+                let colorClass = 'average';
+
+                if (value < 50) colorClass = 'good';
+                else if (value > 150) colorClass = 'poor';
+
+                return `
+                    <div class="bar ${colorClass}" style="height: ${heightPercent}%;">
+                        <div class="bar-tooltip">${value}ms</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function startContinuous() {
+            if (isRunning) return;
+
+            isRunning = true;
+            elements.startContinuous.disabled = true;
+            elements.stopContinuous.disabled = false;
+            elements.measureOnce.disabled = true;
+
+            measureLatency();
+            continuousInterval = setInterval(measureLatency, 2000);
+
+            updateStatus('Continuous monitoring active', 'measuring');
+        }
+
+        function stopContinuous() {
+            if (!isRunning) return;
+
+            isRunning = false;
+            clearInterval(continuousInterval);
+            continuousInterval = null;
+
+            elements.startContinuous.disabled = false;
+            elements.stopContinuous.disabled = true;
+            elements.measureOnce.disabled = false;
+
+            updateStatus('Continuous monitoring stopped', 'idle');
+        }
+
+        function reset() {
+            stopContinuous();
+            measurements = [];
+
+            elements.currentLatency.innerHTML = '--<span class="stat-unit">ms</span>';
+            elements.avgLatency.innerHTML = '--<span class="stat-unit">ms</span>';
+            elements.minLatency.textContent = '--';
+            elements.maxLatency.textContent = '--';
+            elements.measureCount.textContent = '0';
+
+            elements.historyChart.innerHTML = `
+                <div class="empty-state">
+                    No measurements yet. Click "Measure Once" to start.
+                </div>
+            `;
+
+            updateStatus('Reset complete. Ready to measure latency', 'idle');
+        }
+
+        // Event listeners
+        elements.measureOnce.addEventListener('click', measureLatency);
+        elements.startContinuous.addEventListener('click', startContinuous);
+        elements.stopContinuous.addEventListener('click', stopContinuous);
+        elements.reset.addEventListener('click', reset);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'm' || e.key === 'M') {
+                if (!isRunning) measureLatency();
+            } else if (e.key === 's' || e.key === 'S') {
+                if (isRunning) stopContinuous();
+                else startContinuous();
+            } else if (e.key === 'r' || e.key === 'R') {
+                reset();
+            }
+        });
+
+        // Initial message
+        console.log('Latency App loaded successfully');
+        console.log('Keyboard shortcuts: M = Measure | S = Start/Stop | R = Reset');
+    </script>
+</body>
+</html>

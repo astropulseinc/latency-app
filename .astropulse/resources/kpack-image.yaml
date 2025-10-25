@@ -1,0 +1,51 @@
+---
+# kpack Image resource - Builds container image from Git source
+# This resource tells kpack how to build your application
+apiVersion: kpack.io/v1alpha2
+kind: Image
+metadata:
+  name: latency-app
+  # Note: This namespace is overridden by build-app.yaml (Application namespace: kpack)
+  # When deploying YAML resources, the Application namespace always takes precedence
+  namespace: default
+spec:
+  # Git repository containing your application source code
+  source:
+    git:
+      url: https://github.com/astropulseinc/latency-app
+      revision: main
+
+  # Where to push the built container image
+  # CloudFormation creates ECR repository: paas-apps/latency-app
+  # CUSTOMIZE: Update with your AWS account ID and region
+  tag: 123456789012.dkr.ecr.us-west-2.amazonaws.com/paas-apps/latency-app:latest
+
+  # Use the default cluster builder (configured by platform engineer)
+  # The builder contains buildpacks for Go, Node.js, Python, Java, etc.
+  builder:
+    name: default
+    kind: ClusterBuilder
+
+  # Service account with ECR push permissions (created by CloudFormation)
+  serviceAccountName: kpack-service-account
+
+  # Build configuration
+  build:
+    env:
+    - name: BP_GO_VERSION
+      value: "1.25.*"  # Go version (buildpack will use latest 1.21.x)
+    # Optional: Add more build-time environment variables
+    # - name: BP_GO_BUILD_FLAGS
+    #   value: "-ldflags='-s -w'"
+
+  # kpack will:
+  # 1. Clone your Git repository
+  # 2. Detect it's a Go application (from go.mod)
+  # 3. Download Go 1.25.x
+  # 4. Build your application
+  # 5. Create an optimized container image
+  # 6. Push to ECR with :latest tag
+  # 7. Automatically rebuild when:
+  #    - Code changes (Git commits)
+  #    - Base images update (security patches)
+  #    - Buildpacks update

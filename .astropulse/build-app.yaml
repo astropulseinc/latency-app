@@ -1,0 +1,20 @@
+---
+# AstroPulse Application - Build Configuration
+# This deploys a kpack Image resource that builds your app from Git
+name: latency-app-build
+profileName: production-apps
+namespace: kpack  # Application namespace - overrides any namespace in the resource YAML
+
+source:
+  type: yaml
+  yaml:
+    repoURL: https://github.com/astropulseinc/latency-app
+    targetBranch: main
+    path: .astropulse/resources/kpack-image.yaml
+    # Note: The namespace specified above takes precedence over metadata.namespace in kpack-image.yaml
+
+# This creates a kpack Image resource that:
+# 1. Watches your Git repository for changes
+# 2. Automatically builds container images using Cloud Native Buildpacks
+# 3. Pushes built images to your container registry (ECR)
+# 4. Rebuilds when code changes or base images update

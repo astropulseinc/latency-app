@@ -1,0 +1,181 @@
+name: Deploy to AstroPulse Platform
+
+# This workflow is DISABLED by default for the showcase repository
+# Users should:
+# 1. Fork this repository
+# 2. Update configuration in .astropulse/ files (AWS account, domain, repo URL)
+# 3. Add ASTROPULSE_API_KEY to GitHub Secrets
+# 4. Enable the workflow by changing 'workflow_dispatch' to trigger on push
+
+on:
+  workflow_dispatch:  # Manual trigger only - change to 'push: branches: [main]' to enable auto-deploy
+  # push:
+  #   branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup astroctl CLI
+        run: |
+          # Detect OS and architecture
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+
+          # Normalize architecture names
+          case "$ARCH" in
+            x86_64)  ARCH="amd64" ;;
+            aarch64) ARCH="arm64" ;;
+            arm64)   ARCH="arm64" ;;
+          esac
+
+          # Download astroctl
+          # Update this URL to match your actual astroctl release location
+          # Examples:
+          # - GitHub Releases: https://github.com/yourorg/astroctl/releases/latest/download/astroctl-${OS}-${ARCH}
+          # - Google Cloud Storage: https://storage.googleapis.com/astroctl-releases/latest/astroctl-${OS}-${ARCH}
+          # - Custom CDN: https://releases.yourdomain.com/astroctl/latest/astroctl-${OS}-${ARCH}
+
+          curl -L "https://storage.googleapis.com/astroctl-releases/latest/astroctl-${OS}-${ARCH}" -o astroctl
+          chmod +x astroctl
+          sudo mv astroctl /usr/local/bin/
+
+          # Verify installation
+          astroctl version
+
+      - name: Configure AstroPulse authentication
+        env:
+          ASTROPULSE_API_KEY: ${{ secrets.ASTROPULSE_API_KEY }}
+        run: |
+          # astroctl uses ASTROPULSE_API_KEY environment variable for authentication
+          # Generate your API key at: https://astropulse.io/console
+          # Add it to GitHub Secrets as: ASTROPULSE_API_KEY
+
+          if [ -z "$ASTROPULSE_API_KEY" ]; then
+            echo "❌ Error: ASTROPULSE_API_KEY secret not found"
+            echo "Please add your API key to GitHub Secrets"
+            exit 1
+          fi
+
+          echo "✅ AstroPulse authentication configured"
+
+      # Step 0: Create Application Profile (if not exists)
+      - name: Create Application Profile
+        env:
+          ASTROPULSE_API_KEY: ${{ secrets.ASTROPULSE_API_KEY }}
+        run: |
+          PROFILE_NAME=$(grep "^name:" .astropulse/profile.yaml | awk '{print $2}')
+          echo "📋 Checking for application profile: $PROFILE_NAME"
+
+          # Check if profile exists
+          if astroctl app profile get "$PROFILE_NAME" &>/dev/null; then
+            echo "✅ Application profile '$PROFILE_NAME' already exists, skipping creation"
+          else
+            echo "Creating application profile: $PROFILE_NAME"
+            astroctl app profile apply -f .astropulse/profile.yaml
+            echo "✅ Application profile created"
+          fi
+
+      # Step 1: Update kpack Image to build with both :latest and :<git-sha> tags
+      - name: Update build configuration with Git SHA tag
+        env:
+          ASTROPULSE_API_KEY: ${{ secrets.ASTROPULSE_API_KEY }}
+        run: |
+          # Get short Git SHA (first 7 characters)
+          GIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "🏷️  Building with tags: latest, $GIT_SHA"
+
+          # Extract registry from the file FIRST
+          REGISTRY=$(grep "tag:" .astropulse/resources/kpack-image.yaml | awk '{print $2}' | cut -d'/' -f1)
+          echo "Using registry: $REGISTRY"
+
+          # Update kpack-image.yaml to build with both tags
+          # kpack will push to both :latest and :$GIT_SHA
+          sed -i "s|tag: .*|tag: ${REGISTRY}/paas-apps/latency-app:latest|" .astropulse/resources/kpack-image.yaml
+
+          # Add additionalTags for versioned tag
+          if ! grep -q "additionalTags:" .astropulse/resources/kpack-image.yaml; then
+            sed -i "/tag: .*/a\\  additionalTags:\n  - ${REGISTRY}/paas-apps/latency-app:${GIT_SHA}" .astropulse/resources/kpack-image.yaml
+          fi
+
+          astroctl app apply -f .astropulse/build-app.yaml
+          echo "✅ Build config deployed - kpack will build with both :latest and :$GIT_SHA tags"
+
+      # Step 2: Wait for build to complete
+      - name: Wait for image build to complete
+        env:
+          ASTROPULSE_API_KEY: ${{ secrets.ASTROPULSE_API_KEY }}
+        run: |
+          GIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "⏳ Waiting for kpack to build image from Git source..."
+          echo "   Building: :latest and :$GIT_SHA"
+
+          # Wait for build to complete (check every 30 seconds)
+          for i in {1..20}; do
+            STATUS=$(astroctl app status latency-app-build -o json | jq -r '.status')
+            if [ "$STATUS" = "Ready" ]; then
+              echo "✅ Image build complete!"
+              echo "   Pushed: :latest and :$GIT_SHA"
+              break
+            fi
+            echo "Build in progress... (attempt $i/20)"
+            sleep 30
+          done
+
+      # Step 3: Update deploy-app.yaml to use versioned tag
+      - name: Update deployment to use Git SHA tag
+        run: |
+          GIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "📦 Updating deployment to use tag: $GIT_SHA"
+
+          # Update deploy-app.yaml to use the versioned tag
+          sed -i "s|tag: latest|tag: $GIT_SHA|" .astropulse/deploy-app.yaml
+
+          echo "✅ Deploy config updated to use :$GIT_SHA"
+
+      # Step 4: Deploy application (creates Deployment/Service/Ingress)
+      - name: Deploy application
+        env:
+          ASTROPULSE_API_KEY: ${{ secrets.ASTROPULSE_API_KEY }}
+        run: |
+          GIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          astroctl app apply -f .astropulse/deploy-app.yaml
+          echo "✅ Application deployed with image tag: $GIT_SHA"
+          echo "   AstroPulse is creating:"
+          echo "   - Deployment (3 replicas with health checks)"
+          echo "   - Service (ClusterIP)"
+          echo "   - Ingress (with TLS + DNS)"
+
+      # Step 5: Wait for deployment to be ready
+      - name: Wait for deployment to be ready
+        env:
+          ASTROPULSE_API_KEY: ${{ secrets.ASTROPULSE_API_KEY }}
+        run: |
+          echo "⏳ Waiting for application to be ready..."
+
+          # Wait for deployment (check every 10 seconds)
+          for i in {1..30}; do
+            STATUS=$(astroctl app status latency-app -o json | jq -r '.status')
+            if [ "$STATUS" = "RUNNING" ]; then
+              echo "✅ Application is ready!"
+              break
+            fi
+            echo "Deploying... (attempt $i/30)"
+            sleep 10
+          done
+
+      # Step 6: Show deployment info
+      - name: Get deployment URL
+        env:
+          ASTROPULSE_API_KEY: ${{ secrets.ASTROPULSE_API_KEY }}
+        run: |
+          echo "🚀 Application successfully deployed!"
+          echo ""
+          echo "Application Status:"
+          astroctl app status latency-app
+          echo ""
+          echo "Check logs: astroctl app logs latency-app"
+          echo "Check events: astroctl app events latency-app"
