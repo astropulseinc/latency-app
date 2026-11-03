@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: latency
+  labels:
+    app.kubernetes.io/name: latency
+    app.kubernetes.io/instance: latency
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: latency
+    app.kubernetes.io/instance: latency
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
