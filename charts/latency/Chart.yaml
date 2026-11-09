@@ -3,4 +3,4 @@ name: latency
 description: The AstroPulse latency demo app, a web UI and a /ping-latency API on port 8080.
 type: application
 version: 1.0.0
-appVersion: "v1.0.0"
+appVersion: "v1.1.3"
