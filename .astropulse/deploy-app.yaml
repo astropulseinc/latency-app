@@ -10,7 +10,7 @@ spec:
     image:
       registry: ghcr.io
       repository: your-org/latency-app
-      tag: <TAG_KPACK_BUILT>  # the tag kpack built for the commit to run
+      tag: b1.20260101.120000  # replace with the tag kpack built for the commit to run
       port: 8080
   externalAccess:
     domain: your-domain.com

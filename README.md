@@ -33,7 +33,7 @@ In the AstroPulse console, go to **Workloads > Applications > Deploy application
 | `k8s/` | Plain Kubernetes manifests: Deployment and Service |
 | `charts/latency/` | The same app as a Helm chart, with `values-prod.yaml` for two replicas |
 | `.astropulse/` | AstroPulse application files to build the image in your cluster with kpack and deploy it. Replace `your-org`, `your-domain.com` and `your-cluster` first |
-| `.github/workflows/` | `auto-tag.yml` tags each merge and publishes the image; `deploy.yml` ships a tag you choose, using an `ASTROPULSE_API_KEY` repository secret |
+| `.github/workflows/` | `auto-tag.yml` tags each push to `main` and publishes the image; `deploy.yml` ships a tag you choose, using an `ASTROPULSE_API_KEY` repository secret |
 
 ## Develop
 
@@ -43,7 +43,7 @@ make build   # bin/latency
 make docker  # local image
 ```
 
-A merge to `main` creates the next version tag. A merge whose commit message contains `[DOCKER_GENERATE]` also publishes the image under that tag and as `latest`.
+Each push to `main` creates the next version tag. A push whose commit message contains `[DOCKER_GENERATE]` also publishes the image under that tag and as `latest`.
 
 ## License
 
