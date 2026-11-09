@@ -10,7 +10,7 @@ spec:
     image:
       registry: ghcr.io
       repository: your-org/latency-app
-      tag: v1.0.0
+      tag: b1.20261109.193512  # the tag kpack built for the commit to run
       port: 8080
   externalAccess:
     domain: your-domain.com
