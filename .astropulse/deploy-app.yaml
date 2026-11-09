@@ -1,34 +1,16 @@
----
-# AstroPulse Application - Deployment Configuration (type: image)
-# This is the SIMPLEST deployment pattern - AstroPulse auto-generates everything!
-name: latency-app
-profileName: production-apps
-# namespace: latency-app  # Optional - if not specified, platform picks the namespace for you
-source:
-  type: image  # Simplest option - no K8s manifests needed!
-  image:
-    # CUSTOMIZE: Update with your AWS account ID and region
-    # Example: 123456789012.dkr.ecr.us-west-2.amazonaws.com
-    registry: 123456789012.dkr.ecr.us-west-2.amazonaws.com
-    repository: paas-apps/latency-app
-    tag: latest
-
-# Optional: Enable external access with automatic TLS + DNS
-externalAccess:
-  accessType: Ingress
-  dnsName: your-domain.com  # CUSTOMIZE: Your domain (e.g., example.com)
-  # AstroPulse will auto-generate full hostname: latency-app-x2ss.your-domain.com
-  # With:
-  # - Deployment (3 replicas, health checks, resource limits)
-  # - Service (ClusterIP)
-  # - Ingress (nginx-ingress controller)
-  # - TLS certificate (Let's Encrypt via cert-manager)
-  # - DNS record (Route53 via external-dns)
-
-# What AstroPulse automatically configures:
-# ✅ Horizontal Pod Autoscaling (2-10 replicas based on CPU)
-# ✅ Rolling updates with zero downtime
-# ✅ Health checks (liveness and readiness probes)
-# ✅ Resource requests and limits
-# ✅ Security best practices
-# ✅ High availability across availability zones
+# Runs the image kpack built, served on your verified domain with TLS.
+apiVersion: platform.astropulse.io/v1
+kind: Application
+spec:
+  name: latency-app
+  profileName: latency-app-profile
+  namespace: latency-app
+  source:
+    type: Image
+    image:
+      registry: ghcr.io
+      repository: your-org/latency-app
+      tag: b1.20261109.193512  # the tag kpack built for the commit to run
+      port: 8080
+  externalAccess:
+    domain: your-domain.com
