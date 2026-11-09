@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: latency
-          image: docker.io/astropulseinc/latency-app:v1.1.2
+          image: docker.io/astropulseinc/latency-app:v1.1.3
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

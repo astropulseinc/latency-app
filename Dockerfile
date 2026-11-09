@@ -6,8 +6,7 @@ COPY go.mod main.go index.html ./
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o latency .
 
 FROM gcr.io/distroless/static:nonroot
-WORKDIR /
-COPY --from=builder /src/latency /src/index.html /
+COPY --from=builder /src/latency /
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/latency"]

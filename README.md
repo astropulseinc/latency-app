@@ -14,7 +14,7 @@ Open http://localhost:8080. From source: `make run`.
 
 ## Deploy it with AstroPulse
 
-In the AstroPulse console, go to **Workloads > Applications > Deploy application**. Choose **Container image** with `docker.io/astropulseinc/latency-app` on port `8080`. The full walkthrough is [Build your own developer platform](https://astropulse.io/docs/examples/internal-developer-platform/path-to-production).
+In the AstroPulse console, go to **Workloads > Applications > Deploy application**. Choose **Container image** with `docker.io/astropulseinc/latency-app` on port `8080`. See the [AstroPulse docs](https://astropulse.io/docs) for the full walkthrough.
 
 ## Endpoints
 
@@ -32,7 +32,8 @@ In the AstroPulse console, go to **Workloads > Applications > Deploy application
 | `Dockerfile` | A static build on a distroless, non-root base |
 | `k8s/` | Plain Kubernetes manifests: Deployment and Service |
 | `charts/latency/` | The same app as a Helm chart, with `values-prod.yaml` for two replicas |
-| `.astropulse/` | AstroPulse application files for building the image in your cluster with kpack and deploying it |
+| `.astropulse/` | AstroPulse application files to build the image in your cluster with kpack and deploy it. Replace `your-org`, `your-domain.com` and `your-cluster` first |
+| `.github/workflows/` | `auto-tag.yml` tags each merge and publishes the image; `deploy.yml` ships a tag you choose, using an `ASTROPULSE_API_KEY` repository secret |
 
 ## Develop
 
@@ -42,7 +43,7 @@ make build   # bin/latency
 make docker  # local image
 ```
 
-A merge to `main` creates the next version tag. A merge whose commit message contains `[DOCKER_GENERATE]` also publishes the image under that tag.
+A merge to `main` creates the next version tag. A merge whose commit message contains `[DOCKER_GENERATE]` also publishes the image under that tag and as `latest`.
 
 ## License
 

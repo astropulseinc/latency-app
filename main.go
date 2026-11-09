@@ -2,6 +2,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -9,6 +10,9 @@ import (
 )
 
 const addr = ":8080"
+
+//go:embed index.html
+var indexHTML []byte
 
 type latencyResponse struct {
 	Timestamp time.Time `json:"timestamp"`
@@ -47,7 +51,8 @@ func newMux(started time.Time) *http.ServeMux {
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
 	noCache(w)
-	http.ServeFile(w, r, "index.html")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(indexHTML)
 }
 
 // pingLatency returns the server time; the page measures the round trip.

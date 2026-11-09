@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "The image tag kpack built, such as b2.20261109.194615"
+        description: "The image tag kpack built, such as b2.20260101.120000"
         required: true
 
 jobs:
